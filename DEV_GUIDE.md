@@ -9,6 +9,22 @@ Sempre que for desenvolver em ambiente local (seu computador), mantenha a
 variável de ambiente `CURRENT_ENV` como `development` no arquivo `.env`. Deixei
 instruções no arquivo também.
 
+## Onde hospedar?
+
+Se você busca um servidor **robusto, confiável e com preço imbatível**, minha
+recomendação número 1 é o
+[KVM 2 da Hostinger](https://hostinger.com/otaviomiranda).
+
+Testei exaustivamente e a performance do KVM 2 (AMD EPYC + NVMe + banda larga)
+superou expectativas, sendo perfeito para rodar nossa stack Docker.
+
+**Bônus Exclusivo:** Consegui **10% de desconto adicional** para vocês. Basta
+usar o cupom abaixo no carrinho:
+
+- Cupom: `OTAVIOMIRANDA`
+
+---
+
 ## Personalização dos valores
 
 Use seu editor para substituir as chaves à esquerda no bloco de texto abaixo
