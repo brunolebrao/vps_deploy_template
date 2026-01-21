@@ -1,0 +1,187 @@
+name: Build Full Stack
+
+# TRIGGERS
+# This workflow runs when code is pushed to the 'main' branch.
+# We ignore files that don't affect the code (markdown, gitignore, docs)
+# to save resources and avoid unnecessary deployments.
+on:
+  # # Manually
+  # workflow_dispatch:
+
+  # On push to main
+  push:
+    branches: ['main']
+    paths-ignore:
+      - '**/*.md'
+      - '.gitignore'
+      - 'docs/**'
+      - 'LICENSE'
+      - 'Justfile'
+
+# CONCURRENCY
+# This ensures that deployments happen in order.
+# 'cancel-in-progress: false' means: if I push commit A, and then commit B,
+# wait for A to finish before starting B. This prevents race conditions
+# on the server.
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  REPO: ${{ github.repository }}
+
+jobs:
+  # JOB 1: QUALITY CHECKS
+  # This runs first. If it fails, the deploy stops here.
+  tests-typechecking-lint:
+    runs-on: ubuntu-latest
+    # if: ${{ false }} # Disabled for now (Comment or true to enable)
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # We use 'uv' for super-fast Python package management
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: 'uv.lock'
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Type Check with pyright
+        run: uv run pyright
+
+      - name: Lint with Ruff
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Run tests
+        run: uv run pytest
+
+  # JOB 2: BUILD AND PUSH DOCKER IMAGES
+  # Runs only if the quality checks pass.
+  build-and-push:
+    runs-on: ubuntu-latest
+    # if: ${{ false }} # Disabled for now (Comment or true to enable)
+    needs: tests-typechecking-lint
+    permissions:
+      contents: read
+      packages: write # Needed to push to GHCR
+
+    # STRATEGY MATRIX
+    # This allows us to run the same steps for multiple items.
+    # We define our 4 services here.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Main App
+          - service: dockerlabs
+            dockerfile: ./Dockerfile
+            target: production # Multi-stage build target
+          # Nginx
+          - service: nginx
+            dockerfile: ./Dockerfile.nginx
+            target: '' # No specific target
+          # Certbot
+          - service: certbot
+            dockerfile: ./Dockerfile.certbot
+            target: ''
+          # Data Volume Helper
+          - service: data_vol
+            dockerfile: ./Dockerfile.data_vol
+            target: ''
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Required for multi-platform builds and caching features
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Generates tags (e.g., :latest, :sha-12345) automatically
+      - name: Extract image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ env.REGISTRY }}/${{ env.REPO }}-${{ matrix.service }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=long
+
+      # THE BUILD STEP
+      # This builds the image and pushes it to GitHub Container Registry.
+      # It uses the matrix variables defined above.
+      - name: Build & Push (${{ matrix.service }})
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          target: ${{ matrix.target }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Caching speeds up future builds significantly
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          # Ensure these IDs match your container user setup
+          build-args: |
+            APP_UID=1011
+            APP_GID=1011
+
+  # JOB 3: NOTIFY SERVER
+  # Only runs after all images are successfully pushed.
+  notify-server:
+    runs-on: ubuntu-latest
+    # if: ${{ false }} # Disabled for now (Comment or true to enable)
+    needs: build-and-push
+    steps:
+      - name: Call deploy webhook
+        env:
+          WEBHOOK_URL: ${{ secrets.DEPLOY_WEBHOOK_URL }}
+          WEBHOOK_SECRET: ${{ secrets.DEPLOY_WEBHOOK_SECRET }}
+          SHA: ${{ github.sha }}
+          REF: refs/heads/main
+        run: |
+          set -Eeuo pipefail
+
+          # 1. Create the JSON payload
+          PAYLOAD=$(python3 - <<'PY'
+          import json, os
+          payload = {"ref": os.environ["REF"], "after": os.environ["SHA"]}
+          print(json.dumps(payload, separators=( ",", ":" )))
+          PY
+          )
+          export PAYLOAD
+
+          # 2. Sign the payload (HMAC SHA256) for security
+          # The server uses the same secret to verify the request came from us.
+          SIGNATURE=$(python3 - <<'PY'
+          import hmac, hashlib, os
+          secret = os.environ["WEBHOOK_SECRET"].encode()
+          payload = os.environ["PAYLOAD"].encode()
+          print("sha256=" + hmac.new(secret, payload, hashlib.sha256).hexdigest())
+          PY
+          )
+
+          # 3. Send the request
+          echo "Triggering deploy webhook..."
+          curl -fsS -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-GitHub-Event: push" \
+            -H "X-Hub-Signature-256: $SIGNATURE" \
+            -d "$PAYLOAD" \
+            "$WEBHOOK_URL"
