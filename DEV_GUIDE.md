@@ -8,6 +8,8 @@ Também detalhei este processo em vídeo caso queira assistir:
 
 [![YouTube Video](http://img.youtube.com/vi/yxxEk68EDgo/hqdefault.jpg)](https://youtu.be/yxxEk68EDgo 'Crie seu próprio cloud em VPS')
 
+- Link: [https://youtu.be/yxxEk68EDgo](https://youtu.be/yxxEk68EDgo)
+
 ---
 
 ## Onde contratar um servidor?
