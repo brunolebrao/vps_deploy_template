@@ -6,7 +6,7 @@ isso deve funcionar em qualquer servidor.
 
 Também detalhei este processo em vídeo caso queira assistir:
 
-- [Crie Sua Cloud em VPS](https://youtu.be/yxxEk68EDgo)
+[![YouTube Video](http://img.youtube.com/vi/yxxEk68EDgo/hqdefault.jpg)](https://youtu.be/yxxEk68EDgo 'Crie seu próprio cloud em VPS')
 
 ---
 
