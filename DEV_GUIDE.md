@@ -1,22 +1,21 @@
 # Guia para o desenvolvedor
 
-## Local
+Use este guia para aplicar os comandos passo a passo no seu próprio servidor.
+Estou usando o [KVM 2 da Hostinger](https://hostinger.com/otaviomiranda), mas
+isso deve funcionar em qualquer servidor.
 
-Caso ainda não tenho feito isso, copie o arquivo `.env.example` para `.env` e
-modifique os valores como preferir.
+Também detalhei este processo em vídeo caso queira assistir:
 
-Sempre que for desenvolver em ambiente local (seu computador), mantenha a
-variável de ambiente `CURRENT_ENV` como `development` no arquivo `.env`. Deixei
-instruções no arquivo também.
+- [Crie Sua Cloud em VPS](https://youtu.be/yxxEk68EDgo)
 
-## Onde hospedar?
+---
 
-Se você busca um servidor **robusto, confiável e com preço imbatível**, minha
-recomendação número 1 é o
-[KVM 2 da Hostinger](https://hostinger.com/otaviomiranda).
+## Onde contratar um servidor?
 
-Testei exaustivamente e a performance do KVM 2 (AMD EPYC + NVMe + banda larga)
-superou expectativas, sendo perfeito para rodar nossa stack Docker.
+Se você busca um servidor **robusto, confiável e com preço imbatível**,
+recomendo o [KVM 2 da Hostinger](https://hostinger.com/otaviomiranda). Você pode
+escolher outros KVMs maiores ou menores conforme a necessidade. No entanto, o
+custo benefício do KVM 2 é o melhor (você vai perceber isso por conta própria).
 
 **Bônus Exclusivo:** Consegui **10% de desconto adicional** para vocês. Basta
 usar o cupom abaixo no carrinho:
@@ -39,6 +38,17 @@ DOMINIO_SERVER - Seu domínio atrelado ao IP do server (Ex.: exemplo.com)
 SEU_USUARIO_GITHUB - Seu usuário do GitHub (Ex.: joaozinho)
 URL_REPOSITORIO - A URL SSH do seu GitHub (Ex.: git@github.com:user/repo.git)
 ```
+
+---
+
+## Local
+
+Caso ainda não tenho feito isso, copie o arquivo `.env.example` para `.env` e
+modifique os valores como preferir.
+
+Sempre que for desenvolver em ambiente local (seu computador), mantenha a
+variável de ambiente `CURRENT_ENV` como `development` no arquivo `.env`. Deixei
+instruções no arquivo também.
 
 ---
 
