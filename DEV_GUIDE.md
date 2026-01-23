@@ -277,14 +277,39 @@ source ~/.bashrc
 # Abra ou crie este arquivo
 sudo vim /etc/ssh/sshd_config.d/01_sshd_settings.conf
 
-# Cole o seguinte e salve
-PubkeyAuthentication yes # só vamos permitir chaves ssh
+### Início do /etc/ssh/sshd_config.d/01_sshd_settings.conf ####################
+
+# Mínimo recomendável - Eu nunca mudo essas configurações
+PubkeyAuthentication yes
 PasswordAuthentication no
 KbdInteractiveAuthentication no
 ChallengeResponseAuthentication no
 PermitRootLogin no
 PermitEmptyPasswords no
 UsePAM no
+
+# Opcional, mas se não preciso de uma coisa, melhor desativar
+AuthenticationMethods publickey      # força método = publickey (evita fallback esquisito)
+PermitUserEnvironment no             # ignora ~/.ssh/environment (evita injeções de env)
+PermitUserRC no                      # desliga ~/.ssh/rc (menos "magia" no login)
+X11Forwarding no                     # desliga X11 (quase sempre inútil em servidor)
+AllowTcpForwarding no                # fecha tunelamento (pivoteamento)
+AllowAgentForwarding no              # fecha agent forwarding (roubo/abuso do agent)
+PermitOpen none                      # se forwarding off, fica redundante; deixa explícito
+PermitListen none                    # idem (bloqueia reverse forwarding)
+GatewayPorts no                      # evita bind remoto "aberto" em reverse tunnels
+PermitTunnel no                      # desliga tunelamento L3 (TUN/TAP)
+
+# Não é sobre segurança "hard", mas ajuda um pouco (super opcional)
+MaxAuthTries 4                       # diminui tentativas por conexão (default é maior)
+LoginGraceTime 30                    # reduz tempo pra autenticar (default 120s)
+ClientAliveInterval 300              # mata sessão morta (0 = nunca)
+ClientAliveCountMax 2                # junto com acima
+PrintMotd no                         # evita motd duplicada em distros
+UseDNS no                            # evita delay e lookup reverso
+
+### Fim do /etc/ssh/sshd_config.d/01_sshd_settings.conf #######################
+
 
 # Reinicie o serviço
 sudo systemctl restart ssh
@@ -383,11 +408,42 @@ bantime.max       = 24h
 
 # Salve o arquivo e reinicie o serviço
 sudo systemctl restart fail2ban
-
-# Verify
-sudo fail2ban-client status # All jails
-sudo fail2ban-client status sshd # Or sshd jail
 ```
+
+**Manual básico do Fail2Ban para o dia a dia (Cheat Sheet)**
+
+````sh
+# VERIFICAR STATUS
+
+# Ver o status geral (quais jails estão ativas)
+sudo fail2ban-client status
+
+# Ver estatísticas do SSH (quantos banidos, lista de IPs, etc.)
+# Nota: 'sshd' é o nome da jail definida no arquivo .local
+sudo fail2ban-client status sshd
+
+# "DESBANIR" (UNBAN)
+# Caso você ou um colega tenha sido bloqueado sem querer.
+
+# Sintaxe: fail2ban-client set <NOME_DA_JAIL> unbanip <IP>
+sudo fail2ban-client set sshd unbanip 192.168.1.50
+
+# Dica: Se quiser "desbanir" todo mundo (limpar a lista)
+sudo fail2ban-client unban --all
+
+# BANIR MANUALMENTE
+# Viu um IP suspeito nos logs e quer bloquear agora?
+
+# Sintaxe: fail2ban-client set <NOME_DA_JAIL> banip <IP>
+sudo fail2ban-client set sshd banip 203.0.113.45
+
+# MONITORAMENTO (LOGS)
+
+# Ver o que o Fail2Ban está fazendo em tempo real
+sudo journalctl -f -u fail2ban
+
+# Ver quem está tentando logar no SSH (erros de senha)
+sudo journalctl -f -u ssh
 
 ---
 
@@ -415,7 +471,7 @@ sudo ufw allow 443/tcp
 sudo ufw enable
 sudo ufw status
 sudo ufw status verbose
-```
+````
 
 ---
 
