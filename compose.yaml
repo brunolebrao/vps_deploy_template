@@ -2,7 +2,7 @@
 
 services:
   data_vol:
-    image: ghcr.io/otaviomirandabr19/htgr-data_vol:latest
+    image: http://ghcr.io/luizomf/vps_deploy_template-data_vol:latest
     pull_policy: always
     container_name: data_vol
     hostname: data_vol
@@ -24,7 +24,7 @@ services:
 
   dockerlabs:
     pull_policy: always
-    image: ghcr.io/otaviomirandabr19/htgr-dockerlabs:latest
+    image: http://ghcr.io/luizomf/vps_deploy_template-dockerlabs:latest
     restart: unless-stopped
     scale: 2 # <- Uma aplicação, 2 containers
     volumes:
@@ -50,7 +50,7 @@ services:
     container_name: nginx
     hostname: nginx
     pull_policy: always
-    image: ghcr.io/otaviomirandabr19/htgr-nginx:latest
+    image: http://ghcr.io/luizomf/vps_deploy_template-nginx:latest
     restart: unless-stopped
     ports:
       - 443:443
@@ -72,7 +72,7 @@ services:
     container_name: certbot
     hostname: certbot
     pull_policy: always
-    image: ghcr.io/otaviomirandabr19/htgr-certbot:latest
+    image: http://ghcr.io/luizomf/vps_deploy_template-certbot:latest
     restart: unless-stopped
     volumes:
       - scripts:/scripts:ro
