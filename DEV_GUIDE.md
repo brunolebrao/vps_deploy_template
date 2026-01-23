@@ -433,6 +433,8 @@ bantime.max       = 24h
 sudo systemctl restart fail2ban
 ```
 
+---
+
 #### 🚨 FUI BLOQUEADO - SERVIDOR PAROU DE RESPONDER
 
 Estou adicionando esse trecho aqui justamente por ter acontecido comigo. Estava
