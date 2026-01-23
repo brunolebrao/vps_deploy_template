@@ -433,9 +433,45 @@ bantime.max       = 24h
 sudo systemctl restart fail2ban
 ```
 
-**Manual básico do Fail2Ban para o dia a dia (Cheat Sheet)**
+#### 🚨 FUI BLOQUEADO - SERVIDOR PAROU DE RESPONDER
 
-````sh
+Estou adicionando esse trecho aqui justamente por ter acontecido comigo. Estava
+testando configurações e o servidor parou de responder inesperadamente. Você vai
+pensar em todos os motivos possíveis para o problema: sua Internet, a Hostinger,
+seu servidor, seu domínio, etc. Mas, na grande maioria das vezes é o Fail2Ban.
+
+Se você errar a senha mais de 5 vezes, será bloqueado (isso porque aumentei,
+estava 1x apenas). Ele libera automaticamente após 1 hora.
+
+Claro que você não precisa esperar uma hora. Vá no seu painel da Hostinger
+(hpanel), **VPS**, **Gerenciar**. Bem no topo existe um botão `Terminal`. Clique
+nele e faça login com o `root` (se não lembrar a senha, vá em "Configurações" e
+altere).
+
+![Terminal no hpanel](./assets/images/hpanel_terminal.png)
+
+Devidamente logado, pare o serviço do Fail2Ban e teste para ver se volta a logar
+do seu computador local.
+
+```sh
+# Sem sudo porque já estamos como root, do contrário use:
+# sudo systemctl stop fail2ban
+systemctl stop fail2ban
+
+# Se quiser iniciar de novo o serviço
+systemctl start fail2ban
+```
+
+Se voltar era ele mesmo. Deixo um pequeno guia para que você gerencie os IPs
+banidos pelo Fail2Ban. Mas, considere usar apenas chaves SSH. Login por senha é
+menos seguro e está vulnerável a ataques de brute force. Além disso, considere
+adicionar o seu IP ou a rede do seu provedor (se possível) em `ignoreips`.
+
+---
+
+#### Manual básico do Fail2Ban para o dia a dia (Cheat Sheet)
+
+```sh
 # VERIFICAR STATUS
 
 # Ver o status geral (quais jails estão ativas)
@@ -468,7 +504,12 @@ sudo journalctl -f -u fail2ban
 # Ver quem está tentando logar no SSH (erros de senha)
 sudo journalctl -f -u ssh
 
----
+# Para o serviço do Fail2Ban
+sudo systemctl stop fail2ban
+
+# Inicia o serviço do Fail2Ban
+sudo systemctl start fail2ban
+```
 
 ### UFW - Firewall Simples
 
@@ -494,7 +535,7 @@ sudo ufw allow 443/tcp
 sudo ufw enable
 sudo ufw status
 sudo ufw status verbose
-````
+```
 
 ---
 
