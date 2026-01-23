@@ -155,6 +155,8 @@ apt install -y vim curl ca-certificates htop python3 \
 python3-dev acl build-essential ufw fail2ban tree just
 ```
 
+🚨 ATENÇÃO: estamos instalando o Fail2ban aqui.
+
 ---
 
 ### Seu usuário no servidor
@@ -353,12 +355,31 @@ sudo vim /etc/fail2ban/jail.local
 
 # Só copiar e colar o trecho abaixo
 
-[sshd]
+### INICIO DO /etc/fail2ban/jain.local #############################################
 
-enabled = true
-port = ssh
-maxretry = 1
-bantime = 24h
+[DEFAULT]
+# Se você sabe o seu IP ou o IP da rede do seu provedor, por favor, adicione
+# em ignoreip para evitar ser bloqueado. Exemplo: se meu IP é 188.122.144.171
+# Fica assim: ignoreip = 127.0.0.1/8 ::1 188.122.144.171
+ignoreip = 127.0.0.1/8 ::1
+allowipv6 = auto
+
+[sshd]
+enabled  = true
+port     = ssh
+backend  = systemd
+
+# Aumentei o número de tentativas (eu mesmo fui bloqueado)
+maxretry = 5
+findtime = 10m
+bantime  = 1h
+
+# Aumenta o ban se insistir (Progressão geométrica)
+bantime.increment = true
+bantime.factor    = 2
+bantime.max       = 24h
+
+### FIM DO /etc/fail2ban/jail.local #############################################
 
 # Salve o arquivo e reinicie o serviço
 sudo systemctl restart fail2ban
