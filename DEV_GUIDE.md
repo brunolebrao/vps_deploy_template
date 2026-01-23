@@ -149,13 +149,17 @@ Vamos atualizar tudo e instalar alguns pacotes úteis para o servidor.
 
 ```sh
 # NO SERVIDOR (Usuário root)
+# 🚨 ATENÇÃO: estamos instalando o Fail2ban aqui.
+# Evite erra a senha várias vezes.
 apt update
 apt upgrade -y
 apt install -y vim curl ca-certificates htop python3 \
 python3-dev acl build-essential ufw fail2ban tree just
-```
 
-🚨 ATENÇÃO: estamos instalando o Fail2ban aqui.
+# Ajusta o timezone do servidor
+# Lista: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+sudo timedatectl set-timezone America/Sao_Paulo
+```
 
 ---
 
