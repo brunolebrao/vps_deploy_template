@@ -243,6 +243,12 @@ Para não ter que ficar digitando a chave, usuário e senha, vamos configurar
 # Abra ou crie o arquivo abaixo
 vim ~/.ssh/config
 
+###############################################################################
+### Início do ~/.ssh/config ###################################################
+###############################################################################
+
+# ... Podem existir outros blocos aqui ...
+
 # Cole o bloco abaixo substituindo os valores indicados
 Host hostinger
   IgnoreUnknown AddKeysToAgent,UseKeychain
@@ -251,6 +257,12 @@ Host hostinger
   User SEU_USUARIO_SERVER
   Port 22
   IdentityFile ~/.ssh/id_hostinger
+
+# ... Podem existir outros blocos aqui ...
+
+###############################################################################
+### Fim do ~/.ssh/config ######################################################
+###############################################################################
 
 # Agora o comando é apenas
 ssh hostinger
@@ -281,7 +293,9 @@ source ~/.bashrc
 # Abra ou crie este arquivo
 sudo vim /etc/ssh/sshd_config.d/01_sshd_settings.conf
 
+###############################################################################
 ### Início do /etc/ssh/sshd_config.d/01_sshd_settings.conf ####################
+###############################################################################
 
 # Mínimo recomendável - Eu nunca mudo essas configurações
 PubkeyAuthentication yes
@@ -312,8 +326,9 @@ ClientAliveCountMax 2                # junto com acima
 PrintMotd no                         # evita motd duplicada em distros
 UseDNS no                            # evita delay e lookup reverso
 
+###############################################################################
 ### Fim do /etc/ssh/sshd_config.d/01_sshd_settings.conf #######################
-
+###############################################################################
 
 # Reinicie o serviço
 sudo systemctl restart ssh
@@ -384,7 +399,9 @@ sudo vim /etc/fail2ban/jail.local
 
 # Só copiar e colar o trecho abaixo
 
-### INICIO DO /etc/fail2ban/jain.local #############################################
+###############################################################################
+### INICIO DO /etc/fail2ban/jain.local ########################################
+###############################################################################
 
 [DEFAULT]
 # Se você sabe o seu IP ou o IP da rede do seu provedor, por favor, adicione
@@ -408,7 +425,9 @@ bantime.increment = true
 bantime.factor    = 2
 bantime.max       = 24h
 
-### FIM DO /etc/fail2ban/jail.local #############################################
+###############################################################################
+### FIM DO /etc/fail2ban/jail.local ###########################################
+###############################################################################
 
 # Salve o arquivo e reinicie o serviço
 sudo systemctl restart fail2ban
@@ -507,6 +526,12 @@ cat ~/.ssh/repository.pub
 # Abra ~/.ssh/config
 vim ~/.ssh/config
 
+###############################################################################
+### Início do ~/.ssh/config ###################################################
+###############################################################################
+
+# ... Podem existir outros blocos aqui ...
+
 # Cole o seguinte
 Host github.com
   IgnoreUnknown AddKeysToAgent,UseKeychain
@@ -515,6 +540,12 @@ Host github.com
   User git
   Port 22
   IdentityFile ~/.ssh/repository
+
+# ... Podem existir outros blocos aqui ...
+
+###############################################################################
+### Fim do ~/.ssh/config ######################################################
+###############################################################################
 
 # Adicione o github no known_hosts
 ssh-keyscan github.com >> ~/.ssh/known_hosts
@@ -668,7 +699,9 @@ Execute o seguinte:
 # Crie o arquivo do serviço
 sudo vim /etc/systemd/system/webhook-watcher.service
 
-################################################################################
+###############################################################################
+### Início do /etc/systemd/system/webhook-watcher.service #####################
+###############################################################################
 
 [Unit]
 Description=Webhook Watcher for Docker Deployment
@@ -686,7 +719,9 @@ Group=SEU_USUARIO_SERVER
 [Install]
 WantedBy=multi-user.target
 
-################################################################################
+###############################################################################
+### Fim do /etc/systemd/system/webhook-watcher.service ########################
+###############################################################################
 
 # Agora execute os comandos abaixo em ordem
 sudo systemctl daemon-reload
