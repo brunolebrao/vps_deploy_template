@@ -18,7 +18,7 @@ deployment story of this repo.
 - **Provider:** Hostinger KVM 2 VPS.
 - **OS:** Ubuntu 24.04 LTS (with Docker pre-installed).
 - **Network:** Ports 22 (SSH), 80 (HTTP), 443 (HTTPS) open.
-- **User:** `luizotavio` (primary administrative user, used for deployment).
+- **User:** `<deploy-user>` (primary administrative user, used for deployment).
 - **Directories:**
   - Project root: `/dockerlabs`
   - Persistent data: Managed via `data_vol` container and bind mounts.
@@ -76,9 +76,9 @@ Pull"** model to improve security and decoupling.
 - **Firewall:** `ufw` enabled, allowing only SSH, HTTP, and HTTPS.
 - **Fail2Ban:** Configured to jail repeated failed SSH login attempts.
 - **Permissions:**
-  - Project directory `/dockerlabs` is owned by `luizotavio:luizotavio` with
+  - Project directory `/dockerlabs` is owned by `<deploy-user>:<deploy-user>` with
     setgid (`chmod g+s`).
-  - `webhook-watcher` runs as `luizotavio`.
+  - `webhook-watcher` runs as `<deploy-user>`.
 - **Secrets:**
   - Managed via `.env` file (not committed).
   - `GITHUB_WEBHOOK_SECRET` must match between `.env` and GitHub Repository
