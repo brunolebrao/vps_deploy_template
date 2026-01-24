@@ -1,5 +1,10 @@
 # Guia para o desenvolvedor
 
+> **NOTA:** solicitei ao Gemini para fazer uma explicação mais detalhada em cada
+> comando que usei. Espero que ajude ainda mais. Além disso, este projeto conta
+> com um arquivo `AGENTS.md` detalhando tudo. Isso permite que você use o
+> projeto com outros agentes de sua preferência. Se precisar, leia-o e ajuste-o.
+
 Use este guia para aplicar os comandos passo a passo no seu próprio servidor.
 Estou usando o [KVM 2 da Hostinger](https://hostinger.com/otaviomiranda), mas
 isso deve funcionar em qualquer servidor.
@@ -29,11 +34,12 @@ usar o cupom abaixo no carrinho:
 ## Personalização dos valores
 
 Use seu editor para substituir as chaves à esquerda no bloco de texto abaixo
-para os seus dados.
+para os seus dados. Estes são os "apelidos" que usaremos ao longo do guia para
+representar suas informações.
 
 ```text
 SEU_NOME - Seu nome (Ex.: João da Silva)
-SEU_USUARIO_SERVER - Seu nome de usuário para o servidor (Ex.: joaosilva
+SEU_USUARIO_SERVER - Seu nome de usuário para o servidor (Ex.: joaosilva)
 SEU_EMAIL - Seu e-mail para o certbot (Ex.: joaosilva@email.com)
 IP_SERVER - IP do seu VPS (Ex.: 191.27.48.56)
 DOMINIO_SERVER - Seu domínio atrelado ao IP do server (Ex.: exemplo.com)
@@ -104,10 +110,11 @@ Para criar seu par de chaves pública e privada use o comando abaixo:
 
 ```sh
 # NO SEU COMPUTADOR
-# Estes comandos funcionam em Linux, Mac e Windows. Mas, dependendo da versão do
-# seu Windows, ele pode não ter o OpenSSH. Então, você pode usar
-# o PuTTY ou GitBash. Confere os vídeos abaixo:
-# https://youtu.be/SnTBOhYFr28?si=ciRshdsvLQODU2oO
+# Este comando cria um par de chaves SSH usando o algoritmo Ed25519.
+# Por que Ed25519? É um algoritmo moderno, mais rápido e considerado mais
+# seguro que os tradicionais RSA.
+# O -f define o nome do arquivo, para não sobrescrever sua chave padrão.
+# O -C é um comentário, geralmente seu e-mail ou user@host.
 ssh-keygen -t ed25519 -f ~/.ssh/id_hostinger -C "${USER}"
 ```
 
@@ -118,7 +125,8 @@ chave privada.
 
 ```sh
 # NO SEU COMPUTADOR
-# Exemplo - copie o valor da chave pública
+# O comando 'cat' simplesmente exibe o conteúdo do arquivo.
+# Copie a saída deste comando.
 cat ~/.ssh/id_hostinger.pub
 ```
 
@@ -134,6 +142,8 @@ terminal:
 
 ```sh
 # NO SEU COMPUTADOR
+# Estamos nos conectando como 'root' pela primeira vez para configurar o servidor.
+# O -i especifica o arquivo de identidade (nossa chave privada) a ser usado.
 ssh root@DOMINIO_SERVER -i ~/.ssh/id_hostinger
 # Ou
 ssh root@IP_SERVER -i ~/.ssh/id_hostinger
@@ -149,14 +159,18 @@ Vamos atualizar tudo e instalar alguns pacotes úteis para o servidor.
 
 ```sh
 # NO SERVIDOR (Usuário root)
-# 🚨 ATENÇÃO: estamos instalando o Fail2ban aqui.
-# Evite erra a senha várias vezes.
+# Por que fazer isso primeiro? Servidores recém-criados vêm com uma "foto"
+# do sistema daquele momento. Fazer o update e upgrade garante que todos
+# os pacotes e o próprio sistema operacional recebam as últimas atualizações
+# de segurança e correções de bugs. É o primeiro passo para ter um sistema seguro.
 apt update
 apt upgrade -y
+
 apt install -y vim curl ca-certificates htop python3 \
 python3-dev acl build-essential tree just
 
-# Ajusta o timezone do servidor
+# Ajusta o fuso horário do servidor. É importante para que os logs,
+# agendamentos (cron jobs) e a própria aplicação tenham um horário consistente.
 # Lista: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
 sudo timedatectl set-timezone America/Sao_Paulo
 ```
@@ -170,6 +184,10 @@ para seu usuário.
 
 ```sh
 # NO SERVIDOR (Usuário root)
+# Por que criar um usuário? É uma das práticas de segurança mais importantes,
+# chamada "Princípio do Menor Privilégio". O usuário 'root' tem poder
+# ilimitado, o que é perigoso. Criamos um usuário separado para o dia a dia,
+# que só usará poderes administrativos ('sudo') quando for realmente necessário.
 useradd SEU_USUARIO_SERVER -m -s /bin/bash
 ```
 
@@ -205,10 +223,15 @@ novamente).
 
 ```sh
 # NO SERVIDOR
+# Por que adicionar ao grupo 'sudo'? Isso permite que nosso usuário execute
+# comandos como se fosse o 'root' usando o prefixo 'sudo'. É a maneira
+# controlada de realizar tarefas administrativas sem estar logado como 'root'.
 usermod -aG sudo SEU_USUARIO_SERVER
 
 # Como o servidor já tem o docker instalado, podemos
-# adicionar nosso usuário no grupo do docker
+# adicionar nosso usuário no grupo do docker.
+# Por que? Para que nosso usuário possa executar comandos 'docker'
+# sem precisar usar 'sudo' toda vez. Facilita o gerenciamento dos contêineres.
 sudo usermod -aG docker SEU_USUARIO_SERVER
 ```
 
@@ -227,8 +250,11 @@ para nosso usuário.
 
 ```sh
 # NO SEU COMPUTADOR
-# Vai pedir a senha que você acabou de configurar no seu usuário.
+# O comando 'ssh-copy-id' é a forma mais fácil e segura de instalar uma chave
+# pública em um servidor remoto. Ele cuida de criar o arquivo
+# `~/.ssh/authorized_keys` e ajustar as permissões corretamente.
 ssh-copy-id -i ~/.ssh/id_hostinger.pub SEU_USUARIO_SERVER@DOMINIO_SERVER
+
 # Faça o teste e veja se loga com seu usuário sem senha.
 ssh SEU_USUARIO_SERVER@DOMINIO_SERVER -i ~/.ssh/id_hostinger
 # ENTROU? Ok, volte para seu terminal normal (seu computador)
@@ -240,7 +266,9 @@ Para não ter que ficar digitando a chave, usuário e senha, vamos configurar
 
 ```sh
 # NO SEU COMPUTADOR
-# Abra ou crie o arquivo abaixo
+# Por que fazer isso? Este arquivo é um atalho. Ele permite que você crie
+# "apelidos" para suas conexões SSH. Em vez de digitar o comando longo toda vez,
+# você poderá simplesmente digitar 'ssh hostinger'.
 vim ~/.ssh/config
 
 ###############################################################################
@@ -290,55 +318,99 @@ source ~/.bashrc
 
 ```sh
 # NO SERVIDOR (Seu usuário)
-# Abra ou crie este arquivo
+# Por que criar um novo arquivo em 'sshd_config.d'? Isso mantém nossas
+# customizações separadas do arquivo de configuração principal (/etc/ssh/sshd_config).
+# Se uma atualização do sistema modificar o arquivo principal, nossas regras
+# permanecem intactas. É uma forma organizada e segura de gerenciar configurações.
 sudo vim /etc/ssh/sshd_config.d/01_sshd_settings.conf
 
 ###############################################################################
 ### Início do /etc/ssh/sshd_config.d/01_sshd_settings.conf ####################
 ###############################################################################
 
-# Mínimo recomendável - Eu nunca mudo essas configurações
+# --- Bloco 1: Desabilitando Métodos de Login Inseguros ---
+# O objetivo aqui é simples: se não usamos, desativamos. Cada opção ativada
+# é uma possível porta de entrada para um ataque.
+
+# Garante que a autenticação por chaves públicas está habilitada.
 PubkeyAuthentication yes
+# Desabilita completamente a autenticação por senha. Isso torna ataques de
+# força bruta (tentar adivinhar senhas) inúteis.
 PasswordAuthentication no
+# Desabilita login interativo (desafios de teclado).
 KbdInteractiveAuthentication no
+# Desabilita respostas a desafios genéricos.
 ChallengeResponseAuthentication no
+# PROIBE o login do usuário 'root' via SSH. Uma das regras de ouro da segurança.
+# Força o uso de um usuário comum, que precisa usar 'sudo' para tarefas
+# administrativas, registrando essas ações nos logs.
 PermitRootLogin no
+# Garante que não é possível logar com senhas vazias.
 PermitEmptyPasswords no
+# Desativa o sistema de autenticação 'Pluggable Authentication Modules' (PAM).
+# Como já definimos um método forte (chaves públicas), desativar o PAM
+# reduz a complexidade e a superfície de ataque do SSH.
 UsePAM no
 
-# Opcional, mas se não preciso de uma coisa, melhor desativar
-AuthenticationMethods publickey      # força método = publickey (evita fallback esquisito)
-PermitUserEnvironment no             # ignora ~/.ssh/environment (evita injeções de env)
-PermitUserRC no                      # desliga ~/.ssh/rc (menos "magia" no login)
-X11Forwarding no                     # desliga X11 (quase sempre inútil em servidor)
-AllowTcpForwarding no                # fecha tunelamento (pivoteamento)
-AllowAgentForwarding no              # fecha agent forwarding (roubo/abuso do agent)
-PermitOpen none                      # se forwarding off, fica redundante; deixa explícito
-PermitListen none                    # idem (bloqueia reverse forwarding)
-GatewayPorts no                      # evita bind remoto "aberto" em reverse tunnels
-PermitTunnel no                      # desliga tunelamento L3 (TUN/TAP)
+# --- Bloco 2: Reduzindo a Superfície de Ataque ---
+# Estas opções desativam funcionalidades do SSH que são raramente usadas em um
+# servidor web e podem ser exploradas para escalar privilégios ou "pivotar"
+# para outras máquinas na rede.
 
-# Não é sobre segurança "hard", mas ajuda um pouco (super opcional)
-MaxAuthTries 4                       # diminui tentativas por conexão (default é maior)
-LoginGraceTime 30                    # reduz tempo pra autenticar (default 120s)
-ClientAliveInterval 300              # mata sessão morta (0 = nunca)
-ClientAliveCountMax 2                # junto com acima
-PrintMotd no                         # evita motd duplicada em distros
-UseDNS no                            # evita delay e lookup reverso
+# Força o método de autenticação a ser exclusivamente chaves públicas.
+AuthenticationMethods publickey
+# Impede que o cliente SSH passe variáveis de ambiente para o servidor.
+PermitUserEnvironment no
+# Desliga a execução do arquivo ~/.ssh/rc no login, evitando "magia" inesperada.
+PermitUserRC no
+# Desabilita o encaminhamento de interface gráfica (X11). Inútil para
+# servidores, que não possuem ambiente gráfico.
+X11Forwarding no
+# Desabilita o tunelamento de portas TCP, uma técnica que pode ser usada
+# para burlar firewalls.
+AllowTcpForwarding no
+# Impede o encaminhamento do agente SSH, que, se mal utilizado, pode permitir
+# que o servidor remoto use suas chaves SSH locais para se conectar a outros lugares.
+AllowAgentForwarding no
+# Comandos redundantes se o forwarding está desligado, mas deixam explícito
+# que nenhum tipo de tunelamento ou escuta de portas é permitido.
+PermitOpen none
+PermitListen none
+GatewayPorts no
+PermitTunnel no
+
+# --- Bloco 3: Ajustes Finos e Qualidade de Vida ---
+# Não são "hard security", mas ajudam a controlar o comportamento do serviço.
+
+# Reduz o número de tentativas de autenticação por conexão.
+MaxAuthTries 4
+# Reduz o tempo de espera para o login ser completado.
+LoginGraceTime 30
+# Mata sessões inativas após um tempo (5 minutos aqui).
+ClientAliveInterval 300
+ClientAliveCountMax 2
+# Evita que a "mensagem do dia" (motd) seja exibida duas vezes.
+PrintMotd no
+# Desativa a resolução de DNS. Pode acelerar o login, pois o servidor não
+# tentará resolver o nome do host do IP que está se conectando.
+UseDNS no
 
 ###############################################################################
 ### Fim do /etc/ssh/sshd_config.d/01_sshd_settings.conf #######################
 ###############################################################################
 
-# Reinicie o serviço
+# Reinicie o serviço SSH para que as novas configurações sejam aplicadas.
 sudo systemctl restart ssh
 
-# Não feche a conexão ainda. Abra outra aba do terminal e teste
-# Faça testes tanto com o root (não deve logar mais, isso é o correto)
-# Seu usuário deve logar assim:
-ssh hostinger # <- Sem senha, já cai dentro do server
+# NÃO FECHE ESTA CONEXÃO AINDA.
+# Por que? Se você cometeu um erro no arquivo de configuração, o serviço SSH
+# pode não iniciar, e você ficará trancado para fora do servidor.
+# Abra OUTRA aba do terminal e teste a conexão.
+ssh hostinger
 
-# Se funcionar, beleza. Podemos até reiniciar o servidor com
+# Se a nova conexão funcionar, significa que suas regras estão corretas.
+# Agora é seguro fechar a conexão antiga. Podemos até reiniciar o servidor
+# para garantir que tudo sobe corretamente no boot.
 sudo reboot
 ```
 
@@ -350,7 +422,10 @@ Configure o git para evitar erros bobos no futuro.
 
 ```sh
 # NO SERVIDOR (Seu usuário, não usaremos mais o root)
-# Apenas cole os comandos abaixo alterando os dados para os seus
+# Por que fazer isso? Essas configurações são usadas para identificar quem fez
+# cada alteração (commit). Além disso, a configuração de 'autocrlf' e 'eol'
+# padroniza as terminações de linha (LF para Linux/Mac), evitando problemas
+# de formatação de arquivos entre diferentes sistemas operacionais.
 git config --global user.name "SEU_USUARIO_GITHUB"
 git config --global user.email "SEU_EMAIL"
 git config --global core.autocrlf input
@@ -364,21 +439,34 @@ git config --global init.defaultbranch main
 
 ```sh
 # NO SERVIDOR
-# Os comandos abaixo criam o diretório onde vamos colocar nosso projeto
+# Criamos um diretório na raiz do sistema para nosso projeto.
 sudo mkdir /dockerlabs
+# Definimos nosso usuário e grupo como donos do diretório.
 sudo chown -R SEU_USUARIO_SERVER:SEU_USUARIO_SERVER /dockerlabs
+# Permissões 775: Dono (rwx), Grupo (rwx), Outros (r-x).
 sudo chmod -R 775 /dockerlabs
 
-# Sem isso o git pode dar erro no deploy
+# Por que isso? 'git' por padrão se recusa a operar em diretórios que não
+# pertencem ao usuário atual, como medida de segurança. Estamos dizendo ao git
+# que '/dockerlabs' é um diretório seguro para operações.
 git config --global --add safe.directory /dockerlabs
 
-# Access Control List
-# Isso é para evitar que arquivos criados no futuro, tenham as permissões erradas
-# 'd' default
-# 'g:SEU_USUARIO_SERVER:rwx' adicionar read/write/execute no grupo
-# '-R' aplica recursivamente
+# --- A Mágica das Permissões para Deploy ---
+# O que estamos fazendo aqui é crucial para o deploy automático funcionar.
+# O objetivo é garantir que qualquer arquivo ou diretório criado dentro de
+# /dockerlabs, seja pelo nosso usuário ou por um processo do sistema
+# (como o script de deploy), sempre tenha as permissões corretas.
+
+# 'setfacl' (Set File Access Control Lists) define regras de permissão padrão.
+# 'd:g:SEU_USUARIO_SERVER:rwx' significa que, por padrão (d), qualquer novo
+# item criado aqui dará ao grupo (g) 'SEU_USUARIO_SERVER' permissões de
+# leitura, escrita e execução (rwx).
 sudo setfacl -R -m d:g:SEU_USUARIO_SERVER:rwx /dockerlabs
 sudo chmod -R 775 /dockerlabs
+# 'chmod g+s' (setgid bit): Faz com que novos arquivos/pastas criados
+# dentro de /dockerlabs herdem o grupo do diretório pai (SEU_USUARIO_SERVER),
+# em vez do grupo primário de quem os criou. Isso evita o clássico problema
+# de "permissão negada" durante o deploy.
 sudo chmod g+s /dockerlabs
 ```
 
@@ -397,7 +485,10 @@ por um determinado tempo.
 # Instalar o Fail2Ban
 sudo apt install fail2ban
 
-# Vamos criar um arquivo de "jail". É nele que vai a configuração do fail2ban.
+# Vamos criar um arquivo de "jail" local.
+# Por que '.local'? As configurações padrão estão em 'jail.conf'. Nunca
+# editamos esse arquivo diretamente, pois ele pode ser sobrescrito por
+# atualizações. O 'jail.local' é nosso, e suas regras têm prioridade.
 sudo vim /etc/fail2ban/jail.local
 
 # Só copiar e colar o trecho abaixo
@@ -407,32 +498,37 @@ sudo vim /etc/fail2ban/jail.local
 ###############################################################################
 
 [DEFAULT]
-# Se você sabe o seu IP ou o IP da rede do seu provedor, por favor, adicione
-# em ignoreip para evitar ser bloqueado. Exemplo: se meu IP é 188.122.144.171
-# Fica assim: ignoreip = 127.0.0.1/8 ::1 188.122.144.171
+# Por que 'ignoreip'? Para garantir que você não se bloqueie acidentalmente.
+# Adicione aqui seu IP fixo ou o da sua rede, se souber.
 ignoreip = 127.0.0.1/8 ::1
 allowipv6 = auto
 
 [sshd]
+# Esta é a "jaula" específica para o serviço SSH.
 enabled  = true
 port     = ssh
+# Usa o 'systemd' para encontrar os logs, que é o padrão moderno.
 backend  = systemd
 
-# Aumentei o número de tentativas (eu mesmo fui bloqueado)
+# Tolera 5 erros em 10 minutos antes de banir.
 maxretry = 5
 findtime = 10m
+# O banimento inicial dura 1 hora.
 bantime  = 1h
 
-# Aumenta o ban se insistir (Progressão geométrica)
+# Por que 'increment'? Para punir agressores persistentes com mais severidade.
+# Se um mesmo IP for banido várias vezes, o tempo de banimento aumenta.
 bantime.increment = true
+# O tempo de ban aumenta em um fator de 2 a cada novo ban (1h -> 2h -> 4h...).
 bantime.factor    = 2
+# O banimento máximo que pode ser aplicado é de 24 horas.
 bantime.max       = 24h
 
 ###############################################################################
 ### FIM DO /etc/fail2ban/jail.local ###########################################
 ###############################################################################
 
-# Salve o arquivo e reinicie o serviço
+# Salve o arquivo e reinicie o serviço para aplicar a nova configuração.
 sudo systemctl restart fail2ban
 ```
 
@@ -459,18 +555,19 @@ Devidamente logado, pare o serviço do Fail2Ban e teste para ver se volta a loga
 do seu computador local.
 
 ```sh
+# 🚨 Só pare o serviço se for necessário, do contrário nem toque nisso
 # Sem sudo porque já estamos como root, do contrário use:
 # sudo systemctl stop fail2ban
 systemctl stop fail2ban
 
-# Se quiser iniciar de novo o serviço
-systemctl start fail2ban
+# 🚨 Sempre que parar o serviço por algum motivo, inicie novamente depois que terminar:
+sudo systemctl start fail2ban
 ```
 
 Se voltar era ele mesmo. Deixo um pequeno guia para que você gerencie os IPs
 banidos pelo Fail2Ban. Mas, considere usar apenas chaves SSH. Login por senha é
 menos seguro e está vulnerável a ataques de brute force. Além disso, considere
-adicionar o seu IP ou a rede do seu provedor (se possível) em `ignoreips`.
+adicionar o seu IP ou a rede do seu provedor (se possível) em `ignoreip`.
 
 ---
 
@@ -510,9 +607,11 @@ sudo journalctl -f -u fail2ban
 sudo journalctl -f -u ssh
 
 # Para o serviço do Fail2Ban
+# 🚨 Só pare o serviço se for necessário, do contrário nem toque nisso
 sudo systemctl stop fail2ban
 
 # Inicia o serviço do Fail2Ban
+# 🚨 Sempre que parar o serviço por algum motivo, inicie novamente
 sudo systemctl start fail2ban
 ```
 
@@ -523,23 +622,29 @@ ativar o firewall em nosso próprio servidor.
 
 ```sh
 # NO SERVIDOR
-# Instalar o ufw
+# Por que outro firewall? É o princípio de "defesa em profundidade".
+# Ter um firewall no próprio host garante que, mesmo se a configuração do firewall
+# da rede falhar ou for desativada, nosso servidor continua protegido.
+# UFW (Uncomplicated Firewall) é uma interface amigável para o iptables do Linux.
 sudo apt install ufw
 
-# A configuração recomendada é bloquear tudo e liberar o que precisarmos
+# Por que 'deny incoming'? Esta é a política mais segura ("default deny").
+# Bloqueamos TUDO por padrão e só liberamos explicitamente o que é necessário.
+# Se você esquecer de bloquear uma porta, ela continua fechada.
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
 
-# Isso é importante, estamos conectados via SSH. Precisamos disso.
+# Liberamos a porta do SSH. Se não fizermos isso ANTES de ativar o firewall,
+# seremos desconectados e não conseguiremos entrar mais.
 sudo ufw allow ssh
 
-# Também vamos precisar de HTTP e HTTPS
+# Liberamos as portas para tráfego web: 80 (HTTP) e 443 (HTTPS).
 sudo ufw allow 80/tcp
 sudo ufw allow 443/tcp
 
 # Ative o firewall.
-# Ele vai te alertar que você poderia derrubar as conexões, mas já ativamos
-# o ssh.
+# Ele vai te alertar que conexões existentes podem ser derrubadas, mas como já
+# liberamos a porta 'ssh', nossa conexão atual está segura.
 sudo ufw enable
 sudo ufw status
 sudo ufw status verbose
@@ -557,22 +662,23 @@ minha.
 
 ```sh
 # NO SERVIDOR
-# O primeiro par de chaves SSH que criamos foi nesse sentido
-# -> Nosso computador -> Hostinger
-# Agora precisamos de outro par nesse sentido:
-# -> Hostinger -> Nosso repositório (github)
-# Isso deve ser feito no servidor
+# Por que uma nova chave? Esta chave SSH tem um propósito diferente.
+# A primeira ('id_hostinger') era para NÓS acessarmos o SERVIDOR.
+# Esta nova chave ('repository') é para o SERVIDOR acessar o GITHUB.
+# É uma "chave de deploy".
 ssh-keygen -t ed25519 -a 100 -f ~/.ssh/repository -C "${USER}"
 
 # Copie a chave pública
 cat ~/.ssh/repository.pub
 
-# NO GITHUB (Repositório > Settings ou use as chaves do seu usuário se preferir)
-# No repositório, vá em Settings > Deploy Keys
-# Crie e Cole a chave pública
+# NO GITHUB (Repositório > Settings > Deploy Keys)
+# Por que 'Deploy Key'? Uma deploy key dá acesso a APENAS UM repositório.
+# É muito mais seguro do que usar sua chave SSH pessoal no servidor. Se o
+# servidor for comprometido, o dano é contido apenas àquele repositório.
+# Cole a chave pública que você copiou na nova Deploy Key.
 
 # NO SERVIDOR
-# Abra ~/.ssh/config
+# Vamos criar outro "apelido" no SSH, desta vez para o GitHub.
 vim ~/.ssh/config
 
 ###############################################################################
@@ -581,7 +687,8 @@ vim ~/.ssh/config
 
 # ... Podem existir outros blocos aqui ...
 
-# Cole o seguinte
+# Cole o seguinte. Isso instrui o SSH a usar nossa 'repository' key
+# sempre que se conectar ao 'github.com'.
 Host github.com
   IgnoreUnknown AddKeysToAgent,UseKeychain
   AddKeysToAgent yes
@@ -596,7 +703,9 @@ Host github.com
 ### Fim do ~/.ssh/config ######################################################
 ###############################################################################
 
-# Adicione o github no known_hosts
+# Adiciona a "impressão digital" do github.com aos hosts conhecidos.
+# Isso evita aquela pergunta "Are you sure you want to continue connecting?"
+# na primeira vez que o git se conectar, o que quebraria nosso script de deploy.
 ssh-keyscan github.com >> ~/.ssh/known_hosts
 ```
 
@@ -605,6 +714,7 @@ Agora é só clonar o repositório
 ```sh
 # NO SERVIDOR
 cd /dockerlabs
+# Clonamos o repositório para o diretório atual (indicado pelo '.')
 git clone URL_REPOSITORIO . # <- O ponto é importante aqui
 ```
 
@@ -622,6 +732,9 @@ Copie o token e digite o seguinte no server.
 
 ```sh
 # NO SERVIDOR
+# Por que isso? O Docker precisa se autenticar no GitHub Container Registry (GHCR)
+# para baixar imagens de repositórios privados. O PAT (Personal Access Token)
+# funciona como uma senha específica para essa tarefa.
 echo "COLE_O_TOKEN_AQUI" | docker login ghcr.io -u SEU_USUARIO_GITHUB --password-stdin
 # Isso deve alertar que o token ficará visível. Mas não tenho problemas com isso.
 # Se seu servidor for invadido, isso não será seu maior problema (vai por mim).
@@ -639,14 +752,16 @@ Ajuste o `.env` do projeto.
 # NO SERVIDOR
 cd /dockerlabs
 
-# Gere um secret para nosso webhook e copie
-# Adicione no .env em GITHUB_WEBHOOK_SECRET
+# Por que gerar um secret? Este token será usado para verificar se o webhook
+# que chega da GitHub Actions é legítimo, e não uma requisição falsa de
+# um terceiro. É a "senha" que o GitHub e nossa API compartilham.
+# Gere um, copie e cole no .env na variável GITHUB_WEBHOOK_SECRET.
 python3 -c "import secrets; print(secrets.token_hex(32))"
 
 cp .env.example .env
 # Abra o arquivo e configure tudo.
 vim .env
-# Mantenha o CURRENT_ENV como development por agora.
+# Mantenha o CURRENT_ENV como development por agora para os testes iniciais.
 ```
 
 Confira duas ou três vezes, porque editar o `.env` depois que a imagem está
@@ -671,14 +786,14 @@ services:
   data_vol:
     # No seu repositório, vá em packages e pegue a URL para a imagem data_vol
     # Troque a imagem abaixo para a sua (se não, não vai funcionar)
-    image: ghcr.io/luizomf/dockerlabs_pri_hostinger1-data_vol:latest
+    image: ghcr.io/luizomf/vps_deploy_template-data_vol:latest
   # ... várias outras configs
 
   dockerlabs:
     pull_policy: always
     # No seu repositório, vá em packages e pegue a URL para a imagem dockerlabs
     # Troque a imagem abaixo para a sua (se não, não vai funcionar)
-    image: ghcr.io/luizomf/dockerlabs_pri_hostinger1-dockerlabs:latest
+    image: ghcr.io/luizomf/vps_deploy_template-dockerlabs:latest
   # ... várias outras configs
 
   nginx:
@@ -687,7 +802,7 @@ services:
     pull_policy: always
     # No seu repositório, vá em packages e pegue a URL para a imagem nginx
     # Troque a imagem abaixo para a sua (se não, não vai funcionar)
-    image: ghcr.io/luizomf/dockerlabs_pri_hostinger1-nginx:latest
+    image: ghcr.io/luizomf/vps_deploy_template-nginx:latest
   # ... várias outras configs
 
   certbot:
@@ -696,7 +811,7 @@ services:
     pull_policy: always
     # No seu repositório, vá em packages e pegue a URL para a imagem certbot
     # Troque a imagem abaixo para a sua (se não, não vai funcionar)
-    image: ghcr.io/luizomf/dockerlabs_pri_hostinger1-certbot:latest
+    image: ghcr.io/luizomf/vps_deploy_template-certbot:latest
 
   # ... várias outras configs
 ```
@@ -712,9 +827,10 @@ para testes iniciais. E execute o seguinte script.
 
 ```sh
 # NO SERVIDOR
-# Isso pode dar erro de permissão. Nós já fizemos isso, mas garanta que:
-# - Você tem o docker instalado (nós instalamos um sistema que já vem com ele)
-# - Seu usuário está no grupo docker, comando: sudo usermod -aG docker SEU_USUARIO_SERVER
+# O que este script faz? Ele é um "inicializador". Ele lê o .env, gera as
+# configurações do NGINX a partir dos templates, cria os certificados SSL
+# (certificados de teste, no modo 'development') e sobe os contêineres
+# pela primeira vez. Ele prepara todo o ambiente.
 cd /dockerlabs
 /dockerlabs/data/scripts/bootstrap
 ```
@@ -729,9 +845,13 @@ e execute novamente.
 🚨 Aqui você precisa ter absoluta certeza que tudo está certo no `.env`,
 principalmente seu(s) domínio(s).
 
-Os certificados SSl serão gerados pelo certbot.
+Os certificados SSL serão gerados pelo certbot.
 
 ```sh
+# NO SERVIDOR
+# Por que rodar de novo em 'production'? No modo 'production', o script
+# irá instruir o Certbot a gerar certificados SSL REAIS e válidos para o seu
+# domínio, em vez dos certificados de teste usados anteriormente.
 cd /dockerlabs
 /dockerlabs/data/scripts/bootstrap
 ```
@@ -746,6 +866,12 @@ Execute o seguinte:
 
 ```sh
 # Crie o arquivo do serviço
+# Por que 'systemd'? É o gerenciador de serviços padrão no Linux moderno.
+# Criar um serviço para nosso script 'watcher' garante que ele:
+# 1. Inicie automaticamente quando o servidor ligar.
+# 2. Reinicie sozinho se por algum motivo ele falhar.
+# 3. Tenha seus logs gerenciados pelo 'journalctl'.
+# É a forma robusta de rodar um processo em segundo plano.
 sudo vim /etc/systemd/system/webhook-watcher.service
 
 ###############################################################################
@@ -753,19 +879,27 @@ sudo vim /etc/systemd/system/webhook-watcher.service
 ###############################################################################
 
 [Unit]
+# Descrição do nosso serviço.
 Description=Webhook Watcher for Docker Deployment
+# Garante que este serviço só inicie depois que a rede estiver pronta.
 After=network.target
 
 [Service]
 Type=simple
+# O diretório de trabalho para o nosso script.
 WorkingDirectory=/dockerlabs/
+# O comando que será executado.
 ExecStart=/dockerlabs/data/scripts/watcher
+# Reinicia o serviço sempre que ele parar (seja por falha ou sucesso).
 Restart=always
+# Espera 3 segundos antes de tentar reiniciar.
 RestartSec=3
+# Executa o serviço com nosso usuário, não como root. (Princípio do Menor Privilégio)
 User=SEU_USUARIO_SERVER
 Group=SEU_USUARIO_SERVER
 
 [Install]
+# Diz ao systemd para iniciar este serviço durante o boot "normal" do sistema.
 WantedBy=multi-user.target
 
 ###############################################################################
@@ -773,9 +907,13 @@ WantedBy=multi-user.target
 ###############################################################################
 
 # Agora execute os comandos abaixo em ordem
+# Recarrega o systemd para ele ler nosso novo arquivo de serviço.
 sudo systemctl daemon-reload
+# Habilita o serviço para iniciar no boot.
 sudo systemctl enable webhook-watcher
+# Inicia o serviço agora.
 sudo systemctl start webhook-watcher
+# Verifica o status para ver se está rodando sem erros.
 sudo systemctl status webhook-watcher
 
 # # Se precisar remover este serviço por algum motivo, use
@@ -787,7 +925,7 @@ sudo systemctl status webhook-watcher
 # # Se insistir em não apagar
 # sudo systemctl reset-failed
 
-# Para ver os logs
+# Para ver os logs do nosso watcher em tempo real.
 sudo journalctl -u webhook-watcher.service -f
 ```
 
@@ -805,6 +943,15 @@ Crie esses secrets:
 - `DEPLOY_WEBHOOK_URL` - https://DOMINIO_SERVER/webhook/github
 - `DEPLOY_WEBHOOK_SECRET` - Cole o `GITHUB_WEBHOOK_SECRET` do `.env` (mesmo
   valor)
+
+**Por que usar secrets do GitHub?**
+
+Para evitar colocar informações sensíveis (como a URL do webhook e a senha)
+diretamente no código do workflow.
+
+O GitHub injeta esses valores de forma segura durante a execução da Action. O
+`DEPLOY_WEBHOOK_SECRET` deve ser exatamente o mesmo que está no seu arquivo
+`.env` para que a assinatura do webhook possa ser validada com sucesso.
 
 Se tudo estiver correto, ao fazer push para o branch `main`, os testes da
 aplicação serão executados, as builds de imagens do Docker serão criadas no GHCR
