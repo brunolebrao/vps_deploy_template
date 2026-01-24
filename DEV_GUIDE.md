@@ -154,7 +154,7 @@ Vamos atualizar tudo e instalar alguns pacotes úteis para o servidor.
 apt update
 apt upgrade -y
 apt install -y vim curl ca-certificates htop python3 \
-python3-dev acl build-essential ufw fail2ban tree just
+python3-dev acl build-essential tree just
 
 # Ajusta o timezone do servidor
 # Lista: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
@@ -394,6 +394,9 @@ por um determinado tempo.
 
 ```sh
 # NO SERVIDOR
+# Instalar o Fail2Ban
+sudo apt install fail2ban
+
 # Vamos criar um arquivo de "jail". É nele que vai a configuração do fail2ban.
 sudo vim /etc/fail2ban/jail.local
 
@@ -520,6 +523,9 @@ ativar o firewall em nosso próprio servidor.
 
 ```sh
 # NO SERVIDOR
+# Instalar o ufw
+sudo apt install ufw
+
 # A configuração recomendada é bloquear tudo e liberar o que precisarmos
 sudo ufw default deny incoming
 sudo ufw default allow outgoing
