@@ -316,6 +316,9 @@ source ~/.bashrc
 
 ### Reforçando a segurança para o SSH no servidor
 
+**Observação**: as descrições foram escritas foi vários LLMs diferentes. Essa
+última verificação e descrição foi feita pelo Codex (GPT 5.2).
+
 ```sh
 # NO SERVIDOR (Seu usuário)
 # Por que criar um novo arquivo em 'sshd_config.d'? Isso mantém nossas
@@ -328,72 +331,50 @@ sudo vim /etc/ssh/sshd_config.d/01_sshd_settings.conf
 ### Início do /etc/ssh/sshd_config.d/01_sshd_settings.conf ####################
 ###############################################################################
 
-# --- Bloco 1: Desabilitando Métodos de Login Inseguros ---
-# O objetivo aqui é simples: se não usamos, desativamos. Cada opção ativada
-# é uma possível porta de entrada para um ataque.
+# BLOCO 1: AUTENTICAÇÃO E ACESSO (HARDENING)
+# Foco: Eliminar métodos inseguros e garantir que apenas chaves entrem.
 
-# Garante que a autenticação por chaves públicas está habilitada.
-PubkeyAuthentication yes
-# Desabilita completamente a autenticação por senha. Isso torna ataques de
-# força bruta (tentar adivinhar senhas) inúteis.
-PasswordAuthentication no
-# Desabilita login interativo (desafios de teclado).
-KbdInteractiveAuthentication no
-# Desabilita respostas a desafios genéricos.
-ChallengeResponseAuthentication no
-# PROIBE o login do usuário 'root' via SSH. Uma das regras de ouro da segurança.
-# Força o uso de um usuário comum, que precisa usar 'sudo' para tarefas
-# administrativas, registrando essas ações nos logs.
-PermitRootLogin no
-# Garante que não é possível logar com senhas vazias.
-PermitEmptyPasswords no
-# Desativa o sistema de autenticação 'Pluggable Authentication Modules' (PAM).
-# Como já definimos um método forte (chaves públicas), desativar o PAM
-# reduz a complexidade e a superfície de ataque do SSH.
-UsePAM no
+PubkeyAuthentication yes           # Habilita autenticação por chaves públicas
+PasswordAuthentication no          # Desabilita senhas (imune a brute force)
+KbdInteractiveAuthentication no    # Desabilita login interativo por teclado
+ChallengeResponseAuthentication no # Desabilita desafios genéricos de resposta
+PermitRootLogin no                 # Proíbe login do root (regra de ouro)
+PermitEmptyPasswords no            # Proíbe senhas vazias
+UsePAM no                          # Desativa o PAM (reduz superfície de ataque)
+AuthenticationMethods publickey    # Força o uso exclusivo de chaves públicas
 
-# --- Bloco 2: Reduzindo a Superfície de Ataque ---
-# Estas opções desativam funcionalidades do SSH que são raramente usadas em um
-# servidor web e podem ser exploradas para escalar privilégios ou "pivotar"
-# para outras máquinas na rede.
+# BLOCO 2: REDUÇÃO DA SUPERFÍCIE DE ATAQUE (CONECTIVIDADE)
+# Foco: Desativar túneis e funções de rede que podem ser usadas para pivoteamento.
 
-# Força o método de autenticação a ser exclusivamente chaves públicas.
-AuthenticationMethods publickey
-# Impede que o cliente SSH passe variáveis de ambiente para o servidor.
-PermitUserEnvironment no
-# Desliga a execução do arquivo ~/.ssh/rc no login, evitando "magia" inesperada.
-PermitUserRC no
-# Desabilita o encaminhamento de interface gráfica (X11). Inútil para
-# servidores, que não possuem ambiente gráfico.
-X11Forwarding no
-# Desabilita o tunelamento de portas TCP, uma técnica que pode ser usada
-# para burlar firewalls.
+PermitUserEnvironment no           # Impede injeção de variáveis via ~/.ssh/environment
+PermitUserRC no                    # Desativa execução de scripts ~/.ssh/rc no login
+X11Forwarding no                   # Desabilita interface gráfica remota
+
+# TÚNEIS E ENCAMINHAMENTO
+# ATENÇÃO: Se usar SOCKS Proxy (-D) ou túneis TCP, mude para 'yes'.
 AllowTcpForwarding no
-# Impede o encaminhamento do agente SSH, que, se mal utilizado, pode permitir
-# que o servidor remoto use suas chaves SSH locais para se conectar a outros lugares.
+
+# ATENÇÃO: Se usar 'Docker Context' via SSH, mude para 'yes'.
+# Em 'no', o Docker CLI não acessa o docker.sock remoto.
+AllowStreamLocalForwarding no
+
+# ATENÇÃO: Se for usar o Agent Forwarding para pular entre máquinas, mude para 'yes'.
 AllowAgentForwarding no
-# Comandos redundantes se o forwarding está desligado, mas deixam explícito
-# que nenhum tipo de tunelamento ou escuta de portas é permitido.
-PermitOpen none
-PermitListen none
-GatewayPorts no
-PermitTunnel no
 
-# --- Bloco 3: Ajustes Finos e Qualidade de Vida ---
-# Não são "hard security", mas ajudam a controlar o comportamento do serviço.
+PermitOpen none                    # Bloqueia redirecionamento para destinos (L4)
+PermitListen none                  # Impede o servidor de abrir portas remotas
+GatewayPorts no                    # Bloqueia acesso externo a túneis reversos
+PermitTunnel no                    # Desativa criação de adaptadores virtuais (tun/tap)
 
-# Reduz o número de tentativas de autenticação por conexão.
-MaxAuthTries 4
-# Reduz o tempo de espera para o login ser completado.
-LoginGraceTime 30
-# Mata sessões inativas após um tempo (5 minutos aqui).
-ClientAliveInterval 300
-ClientAliveCountMax 2
-# Evita que a "mensagem do dia" (motd) seja exibida duas vezes.
-PrintMotd no
-# Desativa a resolução de DNS. Pode acelerar o login, pois o servidor não
-# tentará resolver o nome do host do IP que está se conectando.
-UseDNS no
+# BLOCO 3: AJUSTES FINOS E QUALIDADE DE VIDA
+# Foco: Controle de sessão e performance.
+
+MaxAuthTries 4                     # Máximo de tentativas de login por conexão
+LoginGraceTime 30                  # Tempo limite para completar o login (segundos)
+ClientAliveInterval 300            # Verifica se o cliente está ativo a cada 5 min
+ClientAliveCountMax 2              # Desconecta após 2 verificações sem resposta
+PrintMotd no                       # Evita duplicidade na mensagem do dia
+UseDNS no                          # Desativa DNS reverso (login muito mais rápido)
 
 ###############################################################################
 ### Fim do /etc/ssh/sshd_config.d/01_sshd_settings.conf #######################
