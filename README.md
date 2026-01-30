@@ -1,4 +1,4 @@
-# Template para Deploy de Produção em Servidores VPS
+# Template para Deploy de Produção em Servidores VPS - Fork
 
 Este repositório é o material de apoio oficial para o tutorial onde
 transformamos um VPS "zerado" em
@@ -12,7 +12,7 @@ empresarial, tudo rodando sobre um
 
 Também detalhei este processo em vídeo caso queira assistir:
 
-[![YouTube Video](http://img.youtube.com/vi/yxxEk68EDgo/hqdefault.jpg)](https://youtu.be/yxxEk68EDgo 'Crie seu próprio cloud em VPS')
+[![YouTube Video](http://img.youtube.com/vi/yxxEk68EDgo/hqdefault.jpg)](https://youtu.be/yxxEk68EDgo "Crie seu próprio cloud em VPS")
 
 - Link: [https://youtu.be/yxxEk68EDgo](https://youtu.be/yxxEk68EDgo)
 
